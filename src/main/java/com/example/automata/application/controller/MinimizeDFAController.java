@@ -12,13 +12,12 @@ import static com.example.automata.application.utils.ControllerUtils.*;
 
 @RestController
 @RequestMapping("/automata")
-public class NFAtoDFAController {
+public class MinimizeDFAController {
 
-    @PostMapping("nfa-to-dfa")
-    public ResponseEntity<?> convertNFAtoDFA(@RequestBody AutomataRequestBody requestBody) {
-
-        Automaton automaton = convertToAutomaton(requestBody, false);
-        automaton.determinize();
-        return getResponseEntity(automaton, false);
+    @PostMapping("minimize-dfa")
+    public ResponseEntity<?> minimizeDFA(@RequestBody AutomataRequestBody requestBody) {
+        Automaton automaton = convertToAutomaton(requestBody, true);
+        automaton.minimize();
+        return getResponseEntity(automaton, true);
     }
 }
