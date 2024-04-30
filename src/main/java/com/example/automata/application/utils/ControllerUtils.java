@@ -9,7 +9,13 @@ import dk.brics.automaton.StatePair;
 import dk.brics.automaton.Transition;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import java.nio.file.Path;
 import java.util.*;
 
 public class ControllerUtils {
@@ -146,5 +152,71 @@ public class ControllerUtils {
         dataForFrontend.setNodes(nodes);
 
         return new ResponseEntity<>(dataForFrontend, HttpStatus.OK);
+    }
+
+    public static Automaton loadJFlapAutomaton(Path path) {
+        Automaton automaton = new Automaton();
+        Map<Integer, State> states = new HashMap<>();
+        Set<StatePair> epsilons = new HashSet<>();
+
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        try {
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document doc = builder.parse(path.toFile());
+
+            NodeList stateNodes = doc.getElementsByTagName("state");
+            for (int i=0; i < stateNodes.getLength(); i++) {
+                Element stateNode = (Element)stateNodes.item(i);
+                int stateId = Integer.parseInt(stateNode.getAttribute("id"));
+
+                State state = new State();
+                state.setAccept(stateNode.getElementsByTagName("final").getLength() == 1);
+
+                if (stateNode.getElementsByTagName("initial").getLength() == 1) {
+                    automaton.setInitialState(state);
+                }
+
+                states.put(stateId, state);
+            }
+
+            NodeList transitionNodes = doc.getElementsByTagName("transition");
+            for (int i=0; i < transitionNodes.getLength(); i++) {
+                Element transitionNode = (Element)transitionNodes.item(i);
+
+                int fromId = Integer.parseInt(getXmlChildContent(transitionNode, "from"));
+                int toId = Integer.parseInt(getXmlChildContent(transitionNode, "to"));
+                State fromState = states.get(fromId);
+                State toState = states.get(toId);
+
+                String label = getXmlChildContent(transitionNode, "read");
+
+                if (label.isEmpty()) {
+                    epsilons.add(new StatePair(fromState, toState));
+                }
+                else if (label.length() == 1) {
+                    fromState.addTransition(new Transition(label.charAt(0), toState));
+                }
+                else {
+                    throw new IllegalArgumentException("Multichar transition label");
+                }
+            }
+
+            automaton.addEpsilons(epsilons);
+            automaton.restoreInvariant();
+            automaton.setDeterministic(false);
+            return automaton;
+        }
+        catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static String getXmlChildContent(Element element, String tagName) {
+        NodeList children = element.getElementsByTagName(tagName);
+        if (children.getLength() != 1) {
+            throw new IllegalArgumentException("Expected single child with given name");
+        }
+
+        return children.item(0).getTextContent();
     }
 }
