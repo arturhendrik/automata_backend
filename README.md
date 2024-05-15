@@ -1,4 +1,4 @@
-# Veebipõhise automaatide õppevahendi backend
+# Veebipõhise automaatide õppevahendi AktFLAP backend
 
 Käivitamiseks kasuta commandi "gradle bootRun" või "gradle run"
 
